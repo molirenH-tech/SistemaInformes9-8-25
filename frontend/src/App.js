@@ -339,12 +339,12 @@ function App() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {user.role === 'admin' ? (
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <TabsList className="grid w-full grid-cols-5">
-              <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
-              <TabsTrigger value="reports">Reportes</TabsTrigger>
-              <TabsTrigger value="users">Usuarios</TabsTrigger>
-              <TabsTrigger value="notifications">Notificaciones</TabsTrigger>
-              <TabsTrigger value="announcements">Anuncios</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-5 mb-6">
+              <TabsTrigger value="dashboard" className="text-sm">Dashboard</TabsTrigger>
+              <TabsTrigger value="reports" className="text-sm">Reportes</TabsTrigger>
+              <TabsTrigger value="users" className="text-sm">Usuarios</TabsTrigger>
+              <TabsTrigger value="notifications" className="text-sm">Notificaciones</TabsTrigger>
+              <TabsTrigger value="announcements" className="text-sm">Anuncios</TabsTrigger>
             </TabsList>
 
             <TabsContent value="dashboard" className="space-y-6">

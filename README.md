@@ -1,366 +1,151 @@
-import requests
-import sys
-import json
-from datetime import datetime
+<!doctype html>
+<html lang="es">
+    <cabeza>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="ancho=ancho-del-dispositivo, escala-inicial=1" />
+        <meta name="color del tema" contenido="#000000" />
+        <meta name="description" content="Un producto de emergent.sh" />
+        <!--
+      manifest.json proporciona metadatos que se utilizan cuando su aplicación web se instala en un
+      Dispositivo móvil o computadora del usuario. Consulte https://developers.google.com/web/fundamentals/web-app-manifest/
+    -->
+        <!--
+      Observe el uso de %PUBLIC_URL% en las etiquetas anteriores.
+      Se reemplazará con la URL de la carpeta "pública" durante la compilación.
+      Sólo se puede hacer referencia desde el HTML a los archivos dentro de la carpeta «pública».
 
-class CJPVigiaAPITester:
-    def __init__(self, base_url="https://abca7cad-c245-4937-8ba3-e9b144eddf06.preview.emergentagent.com"):
-        self.base_url = base_url
-        self.admin_token = None
-        self.alguacil_token = None
-        self.tests_run = 0
-        self.tests_passed = 0
-        self.created_user_id = None
-        self.created_report_id = None
+      A diferencia de "/favicon.ico" o "favicon.ico", "%PUBLIC_URL%/favicon.ico"
+      Funciona correctamente tanto con enrutamiento del lado del cliente como con una URL pública que no sea raíz.
+      Aprenda a configurar una URL pública no raíz ejecutando `npm run build`.
+    -->
+        Emergente | Aplicación Fullstack
+    </cabeza>
+    <cuerpo>
+        <noscript>Debes habilitar JavaScript para ejecutar esta aplicación.</noscript>
+        <div id="raíz"></div>
+        <!--
+      Este archivo HTML es una plantilla.
+      Si lo abres directamente en el navegador, verás una página vacía.
 
-    def run_test(self, name, method, endpoint, expected_status, data=None, token=None):
-        """Run a single API test"""
-        url = f"{self.base_url}/{endpoint}"
-        headers = {'Content-Type': 'application/json'}
-        if token:
-            headers['Authorization'] = f'Bearer {token}'
+      Puede agregar fuentes web, metaetiquetas o análisis a este archivo.
+      El paso de compilación colocará los scripts incluidos en la etiqueta <body>.
 
-        self.tests_run += 1
-        print(f"\n🔍 Testing {name}...")
-        print(f"   URL: {url}")
-        
-        try:
-            if method == 'GET':
-                response = requests.get(url, headers=headers, timeout=10)
-            elif method == 'POST':
-                response = requests.post(url, json=data, headers=headers, timeout=10)
-            elif method == 'PUT':
-                response = requests.put(url, json=data, headers=headers, timeout=10)
-            elif method == 'DELETE':
-                response = requests.delete(url, headers=headers, timeout=10)
-
-            success = response.status_code == expected_status
-            if success:
-                self.tests_passed += 1
-                print(f"✅ Passed - Status: {response.status_code}")
-                try:
-                    response_data = response.json()
-                    print(f"   Response: {json.dumps(response_data, indent=2)[:200]}...")
-                    return True, response_data
-                except:
-                    return True, {}
-            else:
-                print(f"❌ Failed - Expected {expected_status}, got {response.status_code}")
-                try:
-                    error_data = response.json()
-                    print(f"   Error: {error_data}")
-                except:
-                    print(f"   Error: {response.text}")
-                return False, {}
-
-        except Exception as e:
-            print(f"❌ Failed - Error: {str(e)}")
-            return False, {}
-
-    def test_admin_login(self):
-        """Test admin login"""
-        success, response = self.run_test(
-            "Admin Login",
-            "POST",
-            "api/login",
-            200,
-            data={"username": "admin", "password": "admin123"}
-        )
-        if success and 'access_token' in response:
-            self.admin_token = response['access_token']
-            print(f"   Admin token obtained: {self.admin_token[:20]}...")
-            return True
-        return False
-
-    def test_get_current_user(self, token, role_expected):
-        """Test getting current user info"""
-        success, response = self.run_test(
-            f"Get Current User ({role_expected})",
-            "GET",
-            "api/me",
-            200,
-            token=token
-        )
-        if success and response.get('role') == role_expected:
-            print(f"   User role verified: {response.get('role')}")
-            return True
-        return False
-
-    def test_create_user(self):
-        """Test creating a new alguacil user"""
-        test_user_data = {
-            "username": f"test_alguacil_{datetime.now().strftime('%H%M%S')}",
-            "password": "TestPass123!",
-            "role": "alguacil",
-            "full_name": "Test Alguacil Usuario"
-        }
-        
-        success, response = self.run_test(
-            "Create Alguacil User",
-            "POST",
-            "api/users",
-            200,
-            data=test_user_data,
-            token=self.admin_token
-        )
-        
-        if success and 'user_id' in response:
-            self.created_user_id = response['user_id']
-            self.test_user_data = test_user_data
-            print(f"   Created user ID: {self.created_user_id}")
-            return True
-        return False
-
-    def test_alguacil_login(self):
-        """Test alguacil login with created user"""
-        if not hasattr(self, 'test_user_data'):
-            print("❌ No test user data available for alguacil login")
-            return False
-            
-        success, response = self.run_test(
-            "Alguacil Login",
-            "POST",
-            "api/login",
-            200,
-            data={"username": self.test_user_data["username"], "password": self.test_user_data["password"]}
-        )
-        if success and 'access_token' in response:
-            self.alguacil_token = response['access_token']
-            print(f"   Alguacil token obtained: {self.alguacil_token[:20]}...")
-            return True
-        return False
-
-    def test_get_users(self):
-        """Test getting all users (admin only)"""
-        success, response = self.run_test(
-            "Get All Users",
-            "GET",
-            "api/users",
-            200,
-            token=self.admin_token
-        )
-        if success and isinstance(response, list):
-            print(f"   Found {len(response)} users")
-            return True
-        return False
-
-    def test_create_report(self):
-        """Test creating a report as alguacil"""
-        report_data = {
-            "expediente": f"EXP-{datetime.now().strftime('%Y%m%d%H%M%S')}",
-            "tribunal": "Tribunal Supremo de Justicia",
-            "decision": "Sentencia Condenatoria",
-            "observacion": "Reporte de prueba creado durante testing automatizado",
-            "nombre_acusado": "Juan Pérez Ejemplo",
-            "fecha": datetime.now().strftime('%Y-%m-%d'),
-            "hora": datetime.now().strftime('%H:%M')
-        }
-        
-        success, response = self.run_test(
-            "Create Report (Alguacil)",
-            "POST",
-            "api/reports",
-            200,
-            data=report_data,
-            token=self.alguacil_token
-        )
-        
-        if success and 'report_id' in response:
-            self.created_report_id = response['report_id']
-            print(f"   Created report ID: {self.created_report_id}")
-            return True
-        return False
-
-    def test_get_reports_admin(self):
-        """Test getting all reports as admin"""
-        success, response = self.run_test(
-            "Get All Reports (Admin)",
-            "GET",
-            "api/reports",
-            200,
-            token=self.admin_token
-        )
-        if success and isinstance(response, list):
-            print(f"   Admin can see {len(response)} reports")
-            return True
-        return False
-
-    def test_get_reports_alguacil(self):
-        """Test getting reports as alguacil (should only see own reports)"""
-        success, response = self.run_test(
-            "Get Own Reports (Alguacil)",
-            "GET",
-            "api/reports",
-            200,
-            token=self.alguacil_token
-        )
-        if success and isinstance(response, list):
-            print(f"   Alguacil can see {len(response)} reports (own only)")
-            return True
-        return False
-
-    def test_get_stats(self):
-        """Test getting dashboard statistics (admin only)"""
-        success, response = self.run_test(
-            "Get Dashboard Stats",
-            "GET",
-            "api/stats",
-            200,
-            token=self.admin_token
-        )
-        if success and 'total_reports' in response:
-            print(f"   Stats: {response}")
-            return True
-        return False
-
-    def test_create_announcement(self):
-        """Test creating an announcement (admin only)"""
-        announcement_data = {
-            "title": "Anuncio de Prueba",
-            "message": "Este es un anuncio de prueba creado durante el testing automatizado del sistema."
-        }
-        
-        success, response = self.run_test(
-            "Create Announcement",
-            "POST",
-            "api/announcements",
-            200,
-            data=announcement_data,
-            token=self.admin_token
-        )
-        return success
-
-    def test_get_announcements(self):
-        """Test getting announcements"""
-        success, response = self.run_test(
-            "Get Announcements",
-            "GET",
-            "api/announcements",
-            200,
-            token=self.alguacil_token
-        )
-        if success and isinstance(response, list):
-            print(f"   Found {len(response)} announcements")
-            return True
-        return False
-
-    def test_get_notifications(self):
-        """Test getting notifications (admin only)"""
-        success, response = self.run_test(
-            "Get Notifications",
-            "GET",
-            "api/notifications",
-            200,
-            token=self.admin_token
-        )
-        if success and isinstance(response, list):
-            print(f"   Found {len(response)} notifications")
-            return True
-        return False
-
-    def test_unauthorized_access(self):
-        """Test that alguacil cannot access admin endpoints"""
-        print("\n🔒 Testing Role-Based Access Control...")
-        
-        # Test alguacil trying to access admin endpoints
-        endpoints_to_test = [
-            ("api/users", "GET"),
-            ("api/stats", "GET"),
-            ("api/notifications", "GET")
-        ]
-        
-        access_control_working = True
-        for endpoint, method in endpoints_to_test:
-            success, _ = self.run_test(
-                f"Unauthorized Access Test - {endpoint}",
-                method,
-                endpoint,
-                403,  # Should get forbidden
-                token=self.alguacil_token
-            )
-            if not success:
-                access_control_working = False
-        
-        return access_control_working
-
-    def test_invalid_login(self):
-        """Test invalid login credentials"""
-        success, _ = self.run_test(
-            "Invalid Login Test",
-            "POST",
-            "api/login",
-            401,  # Should get unauthorized
-            data={"username": "invalid", "password": "invalid"}
-        )
-        return success
-
-    def cleanup(self):
-        """Clean up created test data"""
-        if self.created_user_id and self.admin_token:
-            print(f"\n🧹 Cleaning up test user: {self.created_user_id}")
-            self.run_test(
-                "Cleanup - Delete Test User",
-                "DELETE",
-                f"api/users/{self.created_user_id}",
-                200,
-                token=self.admin_token
-            )
-
-def main():
-    print("🚀 Starting CJP VIGIA API Testing...")
-    print("=" * 60)
-    
-    tester = CJPVigiaAPITester()
-    
-    try:
-        # Test sequence
-        tests = [
-            ("Admin Login", tester.test_admin_login),
-            ("Get Current User (Admin)", lambda: tester.test_get_current_user(tester.admin_token, "admin")),
-            ("Create Test User", tester.test_create_user),
-            ("Alguacil Login", tester.test_alguacil_login),
-            ("Get Current User (Alguacil)", lambda: tester.test_get_current_user(tester.alguacil_token, "alguacil")),
-            ("Get All Users", tester.test_get_users),
-            ("Create Report", tester.test_create_report),
-            ("Get Reports (Admin)", tester.test_get_reports_admin),
-            ("Get Reports (Alguacil)", tester.test_get_reports_alguacil),
-            ("Get Dashboard Stats", tester.test_get_stats),
-            ("Create Announcement", tester.test_create_announcement),
-            ("Get Announcements", tester.test_get_announcements),
-            ("Get Notifications", tester.test_get_notifications),
-            ("Test Unauthorized Access", tester.test_unauthorized_access),
-            ("Test Invalid Login", tester.test_invalid_login),
-        ]
-        
-        for test_name, test_func in tests:
-            print(f"\n{'='*20} {test_name} {'='*20}")
-            try:
-                result = test_func()
-                if not result:
-                    print(f"⚠️  {test_name} failed but continuing...")
-            except Exception as e:
-                print(f"❌ {test_name} threw exception: {str(e)}")
-        
-        # Cleanup
-        tester.cleanup()
-        
-    except KeyboardInterrupt:
-        print("\n\n⏹️  Testing interrupted by user")
-        tester.cleanup()
-    
-    # Print final results
-    print(f"\n{'='*60}")
-    print(f"📊 FINAL RESULTS:")
-    print(f"   Tests Run: {tester.tests_run}")
-    print(f"   Tests Passed: {tester.tests_passed}")
-    print(f"   Success Rate: {(tester.tests_passed/tester.tests_run*100):.1f}%" if tester.tests_run > 0 else "No tests run")
-    
-    if tester.tests_passed == tester.tests_run:
-        print("🎉 All tests passed! Backend API is working correctly.")
-        return 0
-    else:
-        print(f"⚠️  {tester.tests_run - tester.tests_passed} tests failed.")
-        return 1
-
-if __name__ == "__main__":
-    sys.exit(main())
+      Para comenzar el desarrollo, ejecute `npm start` o `yarn start`.
+      Para crear un paquete de producción, utilice `npm run build` o `yarn build`.
+    -->
+        <a
+            id="insignia emergente"
+            objetivo="_en blanco"
+            href="https://app.emergent.sh/?utm_source=emergent-badge"
+            estilo="
+                pantalla: flex !importante;
+                alinear-elementos: centro !importante;
+                posición: fija !importante;
+                abajo: 20px;
+                derecha: 20px;
+                decoración de texto: ninguna;
+                relleno: 6px 10px;
+                familia de fuentes: -apple-system, BlinkMacSystemFont,
+                    "Segoe UI", Roboto, Oxígeno, Ubuntu, Cantarell,
+                    "Open Sans", "Helvetica Neue",
+                    ¡sans-serif! importante;
+                tamaño de fuente: 12px !importante;
+                índice z: 9999 !importante;
+                caja-sombra: 0 2px 8px rgba(0, 0, 0, 0.15) !importante;
+                radio del borde: 8px !importante;
+                color de fondo: #ffffff !importante;
+                borde: 1px sólido rgba(255, 255, 255, 0.25) !importante;
+            "
+        >
+            <división
+                estilo="mostrar: flex; dirección-flexible: fila; elementos-alineados: centro"
+            >
+                <imagen
+                    estilo="ancho: 20px; alto: 20px; margen derecho: 8px"
+                    Fuente: https://avatars.githubusercontent.com/in/1201222?s=120&u=2686cf91179bbafbc7a71bfbc43004cf9ae1acea&v=4
+                />
+                <p
+                    estilo="
+                        color: #000000;
+                        familia de fuentes: -apple-system, BlinkMacSystemFont,
+                            "Segoe UI", Roboto, Oxígeno, Ubuntu,
+                            Cantarell, "Open Sans",
+                            "Helvetica Neue", sans-serif !importante;
+                        tamaño de fuente: 12px !importante;
+                        alinear-elementos: centro;
+                        margen inferior: 0;
+                    "
+                >
+                    Hecho con Emergent
+                </p>
+            </div>
+        </a>
+        <guión>
+            !(función (t, e) {
+                var o, n, p, r;
+                e.__SV ||
+                    ((ventana.posthog = e),
+                    (e._i = []),
+                    (e.init = función (i, s, a) {
+                        función g(t, e) {
+                            var o = e.split(".");
+                            2 == o.longitud && ((t = t[o[0]]), (e = o[1])),
+                                (t[e] = función () {
+                                    t.push(
+                                        [e].concat(
+                                            Matriz.prototipo.slice.call(
+                                                argumentos,
+                                                0,
+                                            ),
+                                        ),
+                                    );
+                                });
+                        }
+                        ((p = t.createElement("script")).tipo =
+                            "texto/javascript"),
+                            (p.crossOrigin = "anónimo"),
+                            (p.async = !0),
+                            (p.src =
+                                s.api_host.replace(
+                                    ".i.posthog.com",
+                                    "-activos.i.posthog.com",
+                                ) + "/static/array.js"),
+                            (r =
+                                t.getElementsByTagName(
+                                    "guion",
+                                )[0]).parentNode.insertBefore(p, r);
+                        var u = e;
+                        para (
+                            void 0 !== a ? (u = e[a] = []) : (a = "posthog"),
+                                u.gente = u.gente || [],
+                                u.toString = función (t) {
+                                    var e = "posthog";
+                                    devolver (
+                                        "posthog" !== a && (e += "." + a),
+                                        t || (e += " (stub)"),
+                                        mi
+                                    );
+                                },
+                                u.people.toString = función () {
+                                    devuelve u.toString(1) + ".people (stub)";
+                                },
+                                o =
+                                    "iniciar mi ws ys ps bs capturar je Di ks registrar registrar_una vez registrar_para_sesión cancelar registro cancelar_para_sesión Ps obtenerIndicadorDeCaracterística obtenerCargaÚtilDeIndicadorDeCaracterística estáHabilitada la Característica recargarIndicadoresDeCaracterística actualizarInscripciónDeCaracterísticaDeAccesoAnticipado obtenerCaracterísticasDeAccesoAnticipado en enIndicadoresDeCaracterística enEncuestasCargadas enIdDeSesión obtenerEncuestas obtenerEncuestasDeCoincidenciaActiva renderizarEncuesta puedeRenderizarEncuesta puedeRenderizarEncuestaAsync identificar establecerPropiedadesDePersona grupo restablecerGrupos establecerPropiedadesDePersonaParaIndicadores restablecerPropiedadesDePersonaParaIndicadores establecerPropiedadesDeGrupoParaIndicadores restablecerPropiedadesDeGrupoParaIndicadores restablecer obtener_id_distinto obtenerGrupos obtener_id_de_sesión obtener_url_de_reproducción_de_sesión alias establecer_configuración iniciarGrabaciónDeSesión detenerGrabaciónDeSesión grabaciónDeSesiónIniciada capturaExcepción cargarBarraDeHerramientas obtener_propiedadobtenerPropiedadDeSesión Es $s crearPerfilDePersona Es optar_entrar_capturar optar_salir_capturar ha_optado_entrar_captura ha_optado_salir_capturar borrar_opt_entrar_salir_capturar Ss depurar xs obtenerIdDeVistaDePágina capturarRetroalimentaciónDeTrace capturaMétricaDeTrace".split(
+                                        " ",
+                                    ),
+                                n = 0;
+                            n < o.longitud;
+                            n++
+                        )
+                            g(u, o[n]);
+                        e._i.push([i, s, a]);
+                    }),
+                    (e.__SV = 1));
+            })(documento, ventana.posthog || []);
+            posthog.init("phc_yJW1VjHGGwmCbbrtczfqqNxgBDbhlhOWcdzcIJEOTFE", {
+                api_host: "https://us.i.posthog.com",
+                person_profiles: "identified_only", // o 'siempre' para crear perfiles también para usuarios anónimos
+            });
+        </script>
+    </cuerpo>
+</html>
